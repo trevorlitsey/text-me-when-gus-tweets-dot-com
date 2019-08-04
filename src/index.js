@@ -1,6 +1,7 @@
 const http = require('http');
 const express = require('express');
 const bodyParser = require('body-parser');
+const cors = require('cors');
 const getTweets = require('./get-tweets');
 const { createMongooseConnection } = require('./connections');
 const { User, Tweet } = require('./models');
@@ -9,12 +10,13 @@ const sendTextMessage = require('./send-text-message');
 const app = express();
 
 app.use(bodyParser.json());
+app.use(cors());
 
 app.get('/', (_req, res) => {
   res.status(200).send('all good');
 });
 
-app.post('/create-user', async (req, res) => {
+app.post('/user/create', async (req, res) => {
   try {
     if (req.body && req.body.phoneNumber) {
       if (!/^\d{10}$/.test(req.body.phoneNumber)) {
@@ -31,6 +33,21 @@ app.post('/create-user', async (req, res) => {
   }
 });
 
+app.post('user/delete', async (req, res) => {
+  const { phoneNumber } = req.body;
+  try {
+    const user = await User.deleteOne({ phoneNumber });
+    res.status(200).send(user);
+  } catch (e) {
+    return res.status(400).send({ message: e.message });
+  }
+});
+
+app.get('/users/total', async (_req, res) => {
+  const totalUsers = await User.find().countDocuments();
+  res.status(200).send({ totalUsers });
+});
+
 app.post('/check-tweets', async (_req, res) => {
   let recentTweets = [];
 
@@ -45,7 +62,7 @@ app.post('/check-tweets', async (_req, res) => {
   const sentTweetIds = sentTweets.map(sentTweet => sentTweet.id);
 
   const newTweets = recentTweets.filter(recentTweet => {
-    if (sentTweetIds.includes(recentTweet.id)) {
+    if (sentTweetIds.includes(recentTweet.id + '')) {
       return false;
     }
 
