@@ -46,6 +46,7 @@ app.post('user/delete', async (req, res) => {
 
 app.post('/twilio', async (req, res) => {
   const twiml = new MessagingResponse();
+  console.log(req);
 
   const phoneNumber = req.body.From;
   const body = req.body.Body && req.body.Body.toUpperCase();
