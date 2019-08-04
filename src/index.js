@@ -29,7 +29,7 @@ app.post('/check-tweets', async (_req, res) => {
 
   const sentTweetIds = sentTweets.map(sentTweet => sentTweet.id);
 
-  const newTweets = recentTweets.reverse().filter(recentTweet => {
+  const newTweets = recentTweets.filter(recentTweet => {
     if (sentTweetIds.includes(recentTweet.id)) {
       return false;
     }
@@ -38,7 +38,7 @@ app.post('/check-tweets', async (_req, res) => {
   });
 
   if (newTweets.length) {
-    newTweets.forEach(newTweet => {
+    newTweets.reverse().forEach(newTweet => {
       sendTextMessage(newTweet.text);
     });
 
@@ -55,13 +55,23 @@ app.post('/check-tweets', async (_req, res) => {
 
     fs.writeFileSync(
       SENT_TWEETS_FILE,
-      JSON.stringify(sentTweets.concat(justSentTweets), null, '\t')
+      JSON.stringify(justSentTweets.concat(sentTweets), null, '\t')
     );
   } else {
     const resp = { message: 'no new tweets found' };
     console.log(resp);
     res.json(resp);
   }
+});
+
+app.get('/sent-tweets', (_req, res) => {
+  let sentTweets = [];
+
+  if (fs.existsSync('sent-tweets.json')) {
+    sentTweets = JSON.parse(fs.readFileSync(SENT_TWEETS_FILE)).reverse();
+  }
+
+  res.json({ sentTweets });
 });
 
 const PORT = process.env.PORT || 3000;
