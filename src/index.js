@@ -38,7 +38,7 @@ app.post('/check-tweets', async (_req, res) => {
   });
 
   if (newTweets.length) {
-    newTweets.reverse().forEach(newTweet => {
+    [...newTweets].reverse().forEach(newTweet => {
       sendTextMessage(newTweet.text);
     });
 
