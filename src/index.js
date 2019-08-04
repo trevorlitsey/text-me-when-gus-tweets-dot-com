@@ -64,7 +64,7 @@ app.post('/check-tweets', async (_req, res) => {
   }
 });
 
-const PORT = 3000 || process.env.PORT;
+const PORT = process.env.PORT || 3000;
 http.createServer(app).listen(PORT, () => {
   console.log('> app listening on http://localhost:' + PORT);
 });
