@@ -2,6 +2,7 @@ const http = require('http');
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const MessagingResponse = require('twilio').twiml.MessagingResponse;
 const getTweets = require('./get-tweets');
 const { createMongooseConnection } = require('./connections');
 const { User, Tweet } = require('./models');
@@ -41,6 +42,45 @@ app.post('user/delete', async (req, res) => {
   } catch (e) {
     return res.status(400).send({ message: e.message });
   }
+});
+
+app.post('/twilio', async (req, res) => {
+  const twiml = new MessagingResponse();
+
+  const phoneNumber = req.body.From;
+  const body = req.body.Body.toUpperCase();
+
+  try {
+    if (body.includes('START')) {
+      const user = new User({ phoneNumber });
+      await user.save();
+      twiml.message(
+        `Welcome. You are now subscribed to text messages alerts for Gus's tweets. Never miss a good one. Text STOP at any time to unsubscribe.`
+      );
+    } else if (body.includes('STOP')) {
+      await User.deleteOne({ phoneNumber });
+      twiml.message('Thanks for the text. You are now unsubscribed.');
+    } else {
+      const currentUser = await User.find({ phoneNumber });
+      // if they're already subscribed.
+      if (currentUser) {
+        twiml.message(
+          `Sorry, I don't understand what you'd like to do. If you'd like to unsubscribe, text STOP at any time.`
+        );
+      } else {
+        // if they're not already subscribed.
+        twiml.message(
+          `Sorry, I don't understand what you'd like to do. If you'd like to subscribe, text START at any time.`
+        );
+      }
+    }
+  } catch (e) {
+    console.error(e);
+    twiml.message('Sorry, an error occurred. Please try again.');
+  }
+
+  res.writeHead(200, { 'Content-Type': 'text/xml' });
+  res.end(twiml.toString());
 });
 
 app.get('/users/total', async (_req, res) => {

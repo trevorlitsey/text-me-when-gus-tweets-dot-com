@@ -2,10 +2,7 @@ const { Schema, model } = require('mongoose');
 const { db } = require('../connections');
 
 const schema = new Schema({
-  name: {
-    type: String,
-    required: 'name is required to create user',
-  },
+  name: String,
   phoneNumber: {
     type: String,
     required: 'phoneNumber is required to create user',
