@@ -48,7 +48,7 @@ app.post('/twilio', async (req, res) => {
   const twiml = new MessagingResponse();
 
   const phoneNumber = req.body.From;
-  const body = req.body.Body.toUpperCase();
+  const body = req.body.Body && req.body.Body.toUpperCase();
 
   try {
     if (body.includes('START')) {
