@@ -1,15 +1,34 @@
-const fs = require('fs');
 const http = require('http');
 const express = require('express');
+const bodyParser = require('body-parser');
 const getTweets = require('./get-tweets');
+const { createMongooseConnection } = require('./connections');
+const { User, Tweet } = require('./models');
 const sendTextMessage = require('./send-text-message');
-
-const SENT_TWEETS_FILE = 'sent-tweets.json';
 
 const app = express();
 
+app.use(bodyParser.json());
+
 app.get('/', (_req, res) => {
   res.status(200).send('all good');
+});
+
+app.post('/create-user', async (req, res) => {
+  try {
+    if (req.body && req.body.phoneNumber) {
+      if (!/^\d{10}$/.test(req.body.phoneNumber)) {
+        throw new Error('Please enter a valid 10 digit phone number');
+      }
+    }
+    const user = new User(req.body);
+    await user.save();
+    res.status(200).json(user);
+  } catch (e) {
+    res.status(400).json({
+      message: e.message,
+    });
+  }
 });
 
 app.post('/check-tweets', async (_req, res) => {
@@ -21,11 +40,7 @@ app.post('/check-tweets', async (_req, res) => {
     console.error(e);
   }
 
-  let sentTweets = [];
-
-  if (fs.existsSync('sent-tweets.json')) {
-    sentTweets = JSON.parse(fs.readFileSync(SENT_TWEETS_FILE));
-  }
+  const sentTweets = await Tweet.find();
 
   const sentTweetIds = sentTweets.map(sentTweet => sentTweet.id);
 
@@ -37,9 +52,13 @@ app.post('/check-tweets', async (_req, res) => {
     return true;
   });
 
+  const users = await User.find();
+
   if (newTweets.length) {
     [...newTweets].reverse().forEach(newTweet => {
-      sendTextMessage(newTweet.text);
+      users.forEach(user => {
+        sendTextMessage(newTweet.text, user.phoneNumber);
+      });
     });
 
     const justSentTweets = newTweets.map(({ id, text, created_at }) => ({
@@ -48,15 +67,17 @@ app.post('/check-tweets', async (_req, res) => {
       created_at,
     }));
 
+    await Promise.all(
+      justSentTweets.map(justSentTweet => {
+        const newTweet = new Tweet(justSentTweet);
+        return newTweet.save();
+      })
+    );
+
     const stringifiedTweetIds = JSON.stringify(justSentTweets, null, '\t');
     const resp = { message: 'new tweets sent: ' + stringifiedTweetIds };
     console.log(resp);
     res.json(resp);
-
-    fs.writeFileSync(
-      SENT_TWEETS_FILE,
-      JSON.stringify(justSentTweets.concat(sentTweets), null, '\t')
-    );
   } else {
     const resp = { message: 'no new tweets found' };
     console.log(resp);
@@ -64,25 +85,22 @@ app.post('/check-tweets', async (_req, res) => {
   }
 });
 
-app.get('/sent-tweets', (_req, res) => {
-  let sentTweets = [];
-
-  if (fs.existsSync('sent-tweets.json')) {
-    sentTweets = JSON.parse(fs.readFileSync(SENT_TWEETS_FILE)).reverse();
-  }
+app.get('/sent-tweets', async (_req, res) => {
+  const sentTweets = await Tweet.find();
 
   res.json({ sentTweets });
 });
 
-app.post('/clear-tweets', (_req, res) => {
-  fs.writeFileSync(SENT_TWEETS_FILE, JSON.stringify([]));
-
+app.post('/clear-tweets', async (_req, res) => {
+  await Tweet.deleteMany();
   const resp = { messgae: 'recent tweets cleared' };
   console.log(resp);
   res.json(resp);
 });
 
 const PORT = process.env.PORT || 3000;
-http.createServer(app).listen(PORT, () => {
-  console.log('> app listening on http://localhost:' + PORT);
+createMongooseConnection().then(() => {
+  http.createServer(app).listen(PORT, () => {
+    console.log('> app listening on http://localhost:' + PORT);
+  });
 });
