@@ -74,6 +74,14 @@ app.get('/sent-tweets', (_req, res) => {
   res.json({ sentTweets });
 });
 
+app.post('/clear-tweets', (_req, res) => {
+  fs.writeFileSync(SENT_TWEETS_FILE, JSON.stringify([]));
+
+  const resp = { messgae: 'recent tweets cleared' };
+  console.log(resp);
+  res.json(resp);
+});
+
 const PORT = process.env.PORT || 3000;
 http.createServer(app).listen(PORT, () => {
   console.log('> app listening on http://localhost:' + PORT);
