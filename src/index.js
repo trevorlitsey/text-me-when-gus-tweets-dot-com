@@ -8,6 +8,10 @@ const SENT_TWEETS_FILE = 'sent-tweets.json';
 
 const app = express();
 
+app.get('/', (_req, res) => {
+  res.status(200).send('all good');
+});
+
 app.post('/check-tweets', async (_req, res) => {
   let recentTweets = [];
 
