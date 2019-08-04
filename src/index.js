@@ -49,7 +49,7 @@ app.use('/twilio', bodyParser.urlencoded({ extended: false }));
 
 app.post('/twilio', async (req, res) => {
   const twiml = new MessagingResponse();
-  console.log(req);
+  console.log(req.body);
 
   const phoneNumber = req.body.From;
   const body = req.body.Body ? req.body.Body.toUpperCase() : '';
